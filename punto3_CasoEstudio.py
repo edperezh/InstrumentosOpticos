@@ -1,6 +1,29 @@
 # Created on: 10/12/2024
 # Author: edperezh@unal.edu.co
 
+"""
+  Para abordar el punto 3, se implementará inicialmente la función de
+  transmitancia periódica definida por la fórmula:
+
+    t(ξ, η) = 1/2 * [1 + m * cos(2πξ / L)]
+    
+    Parámetros:
+    - xi: valor de ξ
+    - eta: valor de η (no se utiliza directamente en esta ecuación)
+    - m: parámetro de amplitud
+    - L: longitud de onda
+
+  Mediante el uso de Python, se procederá a implementar este patrón,
+  con el objetivo de estudiar el comportamiento del campo difractado
+  bajo el marco de la aproximación de Fresnel. Además, se generarán 
+  las gráficas pertinentes que permitirán un análisis detallado de 
+  los resultados obtenidos.
+
+  Posteriormente, se realizarán los ajustes necesarios para integrar
+  este caso específico en el código existente, asegurando una adecuada
+  implementación y consistencia con los cálculos previos.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
