@@ -1,9 +1,8 @@
 # Created on: 10/12/2024
 # Author: edperezh@unal.edu.co
 
-"""
-
-"""
+""" El objetivo es determinar la distancia a la que se encontraba el objeto
+del sensor durante el registro """
 
 import numpy as np
 import matplotlib.pyplot as plt
