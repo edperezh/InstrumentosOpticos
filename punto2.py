@@ -1,6 +1,14 @@
 # Created on: 09/12/2024
 # Author: edperezh@unal.edu.co
 
+"""Implementación en Python de los métodos de
+    difracción escalar de Transformada de Fresnel y Espectro Angular
+    en sus formas de sumatorias discretas (DFT), y en la forma basada
+    en transformadas rápidas de Fourier (FFT). Compare el desempeño
+    de ambos métodos en términos del tiempo necesario para realizar
+    el cómputo de un mismo experimento difractivo de su elección.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
