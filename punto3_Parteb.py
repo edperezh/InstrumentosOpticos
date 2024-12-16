@@ -10,11 +10,11 @@
 # - Período de la transmittancia (L): 1 mm.
 # - Índice de modulación (m): 0.5.
 #
-# Transmittancia periódica:
-# - Se genera una función periódica de transmittancia t(x, y), utilizando los valores de L y m definidos.
+# Transmitancia periódica:
+# - Se genera una función periódica de transmitancia t(x, y), utilizando los valores de L y m definidos.
 #
 # Cálculo del campo difractado:
-# - Transformada de Fourier 2D: Se aplica a la transmittancia periódica inicial.
+# - Transformada de Fourier 2D: Se aplica a la transmitancia periódica inicial.
 # - Multiplicación con la función de transferencia de Fresnel: Esto modela la propagación del campo en el espacio libre bajo la aproximación de Fresnel.
 # - Transformada Inversa de Fourier: Permite recuperar la distribución del campo en el plano z.
 #
@@ -31,7 +31,7 @@ import time
 wavelength = 633e-9  # Longitud de onda en metros (luz roja: 633 nm)
 distance = 0.1       # Distancia de propagación (metros)
 grid_size = 1024     # Resolución de la cuadrícula
-L = 1e-3             # Período espacial de la transmittancia periódica (metros)
+L = 1e-3             # Período espacial de la transmitancia periódica (metros)
 m = 0.5              # Índice de modulación
 dx = 10e-6           # Tamaño del píxel (metros)
 
@@ -40,11 +40,11 @@ x = np.linspace(-grid_size/2, grid_size/2, grid_size) * dx
 y = np.linspace(-grid_size/2, grid_size/2, grid_size) * dx
 X, Y = np.meshgrid(x, y)
 
-# Transmittancia periódica
+# Transmitancia periódica
 def periodic_transmittance(x, m, L):
     return 0.5 * (1 + m * np.cos(2 * np.pi * x / L))
 
-# Generar transmittancia
+# Generar transmitancia
 transmittance = periodic_transmittance(X, m, L)
 
 # Coordenadas de frecuencia
@@ -67,9 +67,9 @@ calc_time = time.time() - start
 # Visualización
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-# Transmittancia inicial
+# Transmitancia inicial
 axes[0].imshow(transmittance, cmap='gray', extent=[x.min(), x.max(), y.min(), y.max()])
-axes[0].set_title("Transmittancia inicial")
+axes[0].set_title("Transmitancia inicial")
 axes[0].set_xlabel("x (m)")
 axes[0].set_ylabel("y (m)")
 
