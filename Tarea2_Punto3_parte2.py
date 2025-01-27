@@ -1,134 +1,57 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft2, ifft2, fftshift, ifftshift
-from PIL import Image
-import pandas as pd
 
-# Paso 1: Cargar la imagen de transmittancia con ruido
-image_path = r"C:\\Eder Perez\\Unal\\13\\Instrumentos ópticos\\Ruido_E06.png"
+# Cargar datos de la muestra biológica
+muestra_path = "C:\\Eder Perez\\Unal\\13\\IO\\MuestraBio_E06.csv"
+muestra_biologica = np.genfromtxt(muestra_path, delimiter=',')
 
-# image_path = "Ruido_E06.png"
-image = Image.open(image_path).convert("L")  # Convertir a escala de grises
-image_array = np.array(image)
+# Definición de parámetros físicos
+lamda = 600E-9  # Longitud de onda en metros
+f1 = 10E-3  # Distancia focal de la lente L1 en metros
+D_L1 = 7E-3  # Diámetro de la lente L1 en metros
 
-# Paso 2: Definir dimensiones físicas
-D_L1 = 100e-3  # Diámetro de la lente en metros
-f_1 = 500e-3   # Distancia focal de la lente en metros
+sensor_width = muestra_biologica.shape[1]  # Número de columnas de la muestra
+sensor_height = muestra_biologica.shape[0]  # Número de filas de la muestra
+pixel_size = 3.45e-6  # Tamaño de píxel del sensor en metros
 
-# Asociar dimensiones físicas a la imagen
-pixel_size = D_L1 / image_array.shape[0]  # Tamaño del píxel en metros
-x = np.linspace(-D_L1 / 2, D_L1 / 2, image_array.shape[1])
-y = np.linspace(-D_L1 / 2, D_L1 / 2, image_array.shape[0])
+# Dimensiones físicas del plano de entrada
+ancho_muestra = sensor_width * pixel_size
+alto_muestra = sensor_height * pixel_size
+x = np.linspace(-ancho_muestra / 2, ancho_muestra / 2, sensor_width)
+y = np.linspace(-alto_muestra / 2, alto_muestra / 2, sensor_height)
 X, Y = np.meshgrid(x, y)
 
-# Paso 3: Transformada de Fourier de la imagen
-image_fft = fftshift(fft2(image_array))
-spectrum = np.log(1 + np.abs(image_fft))
+# Crear una transmitancia compleja basada en la muestra
+muestra_transmitancia = muestra_biologica * np.exp(1j * np.pi * (X**2 + Y**2) / lamda)
 
-# Crear un filtro pasa bajas (gaussiano)
-def gaussian_filter(shape, cutoff):
+# Transformada de Fourier de la muestra
+muestra_fft = fftshift(fft2(ifftshift(muestra_transmitancia)))
+
+# Máscara de la función pupila
+def funcion_pupila(shape, D_L1):
     rows, cols = shape
-    x = np.linspace(-0.5, 0.5, cols)
-    y = np.linspace(-0.5, 0.5, rows)
+    x = np.linspace(-D_L1 / 2, D_L1 / 2, cols)
+    y = np.linspace(-D_L1 / 2, D_L1 / 2, rows)
     X, Y = np.meshgrid(x, y)
-    distance = np.sqrt(X**2 + Y**2)
-    filter_ = np.exp(-(distance**2) / (2 * (cutoff**2)))
-    return filter_
+    pupila = np.sqrt(X**2 + Y**2) <= (D_L1 / 2)
+    return pupila.astype(np.float32)
 
-cutoff = 0.05  # Frecuencia de corte
-filter_ = gaussian_filter(image_array.shape, cutoff)
+pupila = funcion_pupila(muestra_biologica.shape, D_L1)
 
-# Aplicar el filtro en el dominio de la frecuencia
-filtered_fft = image_fft * filter_
-filtered_image = np.abs(ifft2(ifftshift(filtered_fft)))
+# Aplicar la pupila en el dominio de Fourier
+muestra_filtrada_fft = muestra_fft * pupila
 
-# Paso 4: Visualización de la primera parte
-plt.figure(figsize=(12, 8))
+# Regresar al dominio espacial
+campo_observado = ifft2(ifftshift(muestra_filtrada_fft))
+intensidad_observada = np.abs(campo_observado)**2
 
-plt.subplot(2, 3, 1)
-plt.title("Imagen original")
-plt.imshow(image_array, cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 2)
-plt.title("Espectro de Fourier")
-plt.imshow(spectrum, cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 3)
-plt.title("Filtro Gaussiano")
-plt.imshow(filter_, cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 4)
-plt.title("FFT filtrada")
-plt.imshow(np.log(1 + np.abs(filtered_fft)), cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 5)
-plt.title("Imagen filtrada")
-plt.imshow(filtered_image, cmap="gray")
-plt.axis("off")
-
-plt.tight_layout()
-plt.show()
-
-# Paso 5: Cargar datos de la muestra biológica
-sample_path = "C:\\Eder Perez\\Unal\\13\\Instrumentos ópticos\\MuestraBio_E06.csv"
-# sample_data = pd.read_csv(sample_path, header=None).values  
-# sample_data = pd.read_csv(sample_path, header=None, dtype=complex).values # Leer como matriz de valores
-# Leer el archivo CSV como texto
-sample_data_raw = pd.read_csv(sample_path, header=None, dtype=str)
-
-# Convertir cada valor a número complejo
-sample_data = sample_data_raw.applymap(lambda x: complex(x)).values
-
-
-
-# Dimensiones físicas de la muestra
-sample_size = 125e-6  # 125 micrones
-sample_pixel_size = sample_size / sample_data.shape[0]  # Tamaño del píxel
-
-# Coordenadas para la muestra
-x_sample = np.linspace(-sample_size / 2, sample_size / 2, sample_data.shape[1])
-y_sample = np.linspace(-sample_size / 2, sample_size / 2, sample_data.shape[0])
-X_sample, Y_sample = np.meshgrid(x_sample, y_sample)
-
-# Paso 6: Transformada de Fourier de la muestra
-sample_fft = fftshift(fft2(sample_data))
-sample_spectrum = np.log(1 + np.abs(sample_fft))
-
-# Aplicar un filtro gaussiano similar al anterior
-sample_filtered_fft = sample_fft * filter_
-sample_filtered_image = np.abs(ifft2(ifftshift(sample_filtered_fft)))
-
-# Paso 7: Visualización de la segunda parte
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2, 3, 1)
-plt.title("Muestra original")
-plt.imshow(sample_data, cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 2)
-plt.title("Espectro de Fourier de la muestra")
-plt.imshow(sample_spectrum, cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 3)
-plt.title("Filtro Gaussiano")
-plt.imshow(filter_, cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 4)
-plt.title("FFT filtrada de la muestra")
-plt.imshow(np.log(1 + np.abs(sample_filtered_fft)), cmap="gray")
-plt.axis("off")
-
-plt.subplot(2, 3, 5)
-plt.title("Muestra filtrada")
-plt.imshow(sample_filtered_image, cmap="gray")
-plt.axis("off")
-
+# Visualización de los resultados
+plt.figure(figsize=(10, 8))
+plt.title("Mapa de Intensidad")
+plt.imshow(intensidad_observada, extent=[-ancho_muestra/2, ancho_muestra/2, -alto_muestra/2, alto_muestra/2], cmap='gray')
+plt.colorbar(label="Intensidad")
+plt.xlabel("X (m)")
+plt.ylabel("Y (m)")
 plt.tight_layout()
 plt.show()
