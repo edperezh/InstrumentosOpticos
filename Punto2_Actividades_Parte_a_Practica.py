@@ -10,7 +10,6 @@ El código consta de:
 5) Cálculo de sin(θ) = λ·f y, por consiguiente, el ángulo θ en grados.
 6) Visualización del holograma y del espectro, marcando el pico hallado.
 
-Comentarios detallados se incluyen dentro del bloque de código.
 """
 
 import numpy as np               # Manejo de arreglos y funciones matemáticas
