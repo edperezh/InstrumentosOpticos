@@ -1,91 +1,88 @@
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
-from scipy.fftpack import fft2, fftshift, ifft2
-from scipy.ndimage import gaussian_filter
-from skimage import io
+from numpy.fft import fft2, ifftshift, fftshift
 
-# -------------------------
-# Parámetros del sistema óptico
-# -------------------------
+# Definición de parámetros
+lamda = 533E-7  # Longitud de onda en metros
+f1 = 0.02  # Focal del primer lente
+f2 = 0.2  # Focal del segundo lente
+d = 0.2  # Distancia
+M = 10  # Magnificación del objetivo
 
-lambda_nm = 533  # Longitud de onda en nm
-NA = 0.25  # Apertura numérica del objetivo
-M = 10  # Aumento del objetivo
-f_tube = 200  # Longitud focal del lente de tubo en mm
-pixel_size = 2.74  # Tamaño de píxel del sensor en µm
+L0 = 2 * f1  # Camino óptico 1
+L1 = f2 + d  # Camino óptico 2
+diam_pupila = 0.0105  # Diámetro de la pupila en metros
+radio_pupila = diam_pupila / 2
 
-# Convertimos unidades a micrómetros (µm)
-lambda_um = lambda_nm / 1000  # nm a µm
-f_tube_um = f_tube * 1000  # mm a µm
-pixel_size_um = pixel_size  # µm
+sensor_pixels = 2848  # Pixeles del sensor (sensor cuadrado)
+pixel_size = 2.74E-6  # Tamaño de píxel en metros
 
-# Cálculo del límite de resolución según el criterio de Abbe
-resolution_abbe = lambda_um / (2 * NA)
+# Cálculo del tamaño físico del sensor
+sensor_size = sensor_pixels * pixel_size
+print(f"Dimensiones físicas del sensor: {sensor_size} m x {sensor_size} m")
 
-# -------------------------
-# Carga de la imagen de prueba
-# -------------------------
+# Tamaño de pixel en la muestra
+dx_muestra = pixel_size / M
+# Tamaño del campo de visión en la muestra
+Lx = sensor_pixels * dx_muestra
+print(f"Dimensiones físicas de la muestra: {Lx} m x {Lx} m")
 
-image_path = "Star_2048.tif" 
-image = io.imread(image_path, as_gray=True)  # Cargar imagen en escala de grises
-image = image / np.max(image)  # Normalizar la imagen para que sus valores estén entre 0 y 1
+# Coordenadas espaciales en el plano de entrada (muestra)
+px = np.linspace(-radio_pupila, radio_pupila, sensor_pixels)
+py = np.linspace(-radio_pupila, radio_pupila, sensor_pixels)
+Px, Py = np.meshgrid(px, py)
 
-# -------------------------
-# Reducción del tamaño de la imagen para optimizar memoria
-# -------------------------
+# Crear la pupila circular basada en la apertura numérica NA = 0.25
+distance = np.sqrt(Px**2 + Py**2)
+pupila = np.zeros((sensor_pixels, sensor_pixels))
+pupila[distance <= radio_pupila] = 1  # Se usa 1 en vez de 255 para normalización
 
-resize_factor = 0.1  # Reducir al 10% del tamaño original
-new_size = (int(image.shape[1] * resize_factor), int(image.shape[0] * resize_factor))
-image_resized = cv2.resize(image, new_size, interpolation=cv2.INTER_AREA).astype(np.float32)
+plt.figure(figsize=(6, 6))
+plt.imshow(pupila, cmap='gray', vmin=0, vmax=1)
+plt.title("Pupila Circular")
 
-# -------------------------
-# Simulación de la respuesta del sistema óptico
-# -------------------------
+# Cargar la imagen de entrada y verificar que se carga correctamente
+image_path = "USAF_3000px_cl.jpg"
+U0 = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-def optical_transfer_function(image, resolution):
-    """
-    Simula el efecto del sistema óptico aplicando una función de transferencia óptica (OTF) basada en el criterio de Abbe.
-    """
-    H, W = image.shape  # Obtiene dimensiones de la imagen
-    fx = np.fft.fftfreq(W, d=pixel_size_um)  # Calcula frecuencias espaciales en X
-    fy = np.fft.fftfreq(H, d=pixel_size_um)  # Calcula frecuencias espaciales en Y
-    FX, FY = np.meshgrid(fx, fy)  # Crea malla de coordenadas en el espacio de Fourier
-    
-    # Cálculo del filtro en Fourier basado en la función de transferencia óptica (OTF)
-    radius = np.sqrt(FX**2 + FY**2)  # Radio en el dominio de Fourier
-    cutoff = 1 / resolution  # Frecuencia de corte basada en la resolución de Abbe
-    OTF = np.exp(- (radius / cutoff)**2)  # Aproximación gaussiana de la OTF
-    
-    # Transformada de Fourier de la imagen y aplicación del filtro
-    image_ft = fft2(image)
-    image_ft_filtered = image_ft * fftshift(OTF)
-    
-    # Transformada inversa para recuperar la imagen filtrada
-    image_filtered = np.abs(ifft2(image_ft_filtered))
-    return image_filtered
+if U0 is None:
+    print(f"Error: No se pudo cargar la imagen '{image_path}'. Verifica la ruta.")
+    exit()
 
-# Aplicar la función de transferencia óptica
-image_simulated = optical_transfer_function(image_resized, resolution_abbe)
+# Redimensionar la imagen al tamaño del sensor si es necesario
+U0 = cv2.resize(U0, (sensor_pixels, sensor_pixels), interpolation=cv2.INTER_AREA)
+plt.figure(figsize=(6, 6))
+plt.imshow(U0, cmap='gray')
+plt.title("Imagen de Entrada")
 
-# -------------------------
-# Guardado de resultados
-# -------------------------
+# Transformada de Fourier de la imagen de entrada
+U_pupila = fftshift(fft2(ifftshift(U0)))
+U_pupila_observado = np.abs(U_pupila) ** 2
 
-plt.imsave("imagen_original_reducida.png", image_resized, cmap='gray')
-plt.imsave("imagen_simulada_microscopio.png", image_simulated, cmap='gray')
+plt.figure(figsize=(6, 6))
+plt.imshow(np.log(U_pupila_observado + 1), cmap='gray')
+plt.title("Transformada de Fourier de la Imagen")
 
-# -------------------------
-# Visualización de los resultados
-# -------------------------
+# Multiplicación en frecuencia con la pupila
+U = U_pupila * pupila
+U_observado = np.abs(U) ** 2
 
-fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-ax[0].imshow(image_resized, cmap='gray')
-ax[0].set_title("Imagen Original Reducida")
-ax[0].axis("off")
+plt.figure(figsize=(6, 6))
+plt.imshow(np.log(U_observado + 1), cmap='gray')
+plt.title("Imagen Filtrada por la Pupila")
 
-ax[1].imshow(image_simulated, cmap='gray')
-ax[1].set_title("Imagen con Simulación de Microscopio")
-ax[1].axis("off")
+# Propagación óptica de la imagen
+k = 2 * np.pi / lamda  # Número de onda
+terminos_faseprop = (-1 * np.exp(1j * (k * (L0 + L1))) / ((lamda**2) * f1 * f2)) \
+    * np.exp((1j * k * (f2 - d) * (Px**2 + Py**2)) / (2 * f2**2))
+
+U_sensor = fftshift(fft2(ifftshift(U)))
+U_final_propagado = terminos_faseprop * U_sensor
+U_observado2 = np.abs(U_final_propagado) ** 2
+
+plt.figure(figsize=(6, 6))
+plt.imshow(np.log(U_observado2 + 1), cmap='gray')
+plt.title("Imagen Final en el Sensor")
 
 plt.show()
